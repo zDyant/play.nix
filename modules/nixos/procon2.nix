@@ -7,22 +7,18 @@
   inputs,
   ...
 }:
-
-with lib;
-
-let
+with lib; let
   cfg = config.play.procon2;
   # Package provided directly by mix.nix (no overlay needed for users)
-  procon2-init = inputs.mix-nix.packages.${pkgs.system}.procon2-init;
-in
-{
+  procon2-init = inputs.mix-nix.packages.${pkgs.stdenv.hostPlatform.system}.procon2-init;
+in {
   options.play.procon2 = {
     enable = mkEnableOption "Nintendo Switch 2 Pro Controller support";
   };
 
   config = mkIf cfg.enable {
     # Add the initialization tool to system packages
-    environment.systemPackages = [ procon2-init ];
+    environment.systemPackages = [procon2-init];
 
     # Udev rules for Nintendo Pro Controller 2
     services.udev.extraRules = ''
@@ -34,6 +30,6 @@ in
     '';
 
     # Ensure users are in the input group for gamepad access
-    users.groups.input = { };
+    users.groups.input = {};
   };
 }

@@ -10,13 +10,15 @@
 # nix build .#proton-cachyos --no-link
 let
   cfg = config.play.gamescoperun;
+  system = pkgs.stdenv.hostPlatform.system;
 
   # Use shared lib functions from play.nix lib (passed via _module.args)
   inherit (playLib) toCliArgs getMonitorDefaults;
 
   # Use mix.nix monitors (config.monitors) instead of play.monitors
   monitorDefaults = getMonitorDefaults config.monitors;
-  inherit (monitorDefaults)
+  inherit
+    (monitorDefaults)
     WIDTH
     HEIGHT
     REFRESH_RATE
@@ -26,59 +28,63 @@ let
 
   # Determine final HDR and WSI settings
   # Precedence: defaultHDR (if explicitly set) > monitor HDR capability (fallback)
-  finalHDR = if cfg.defaultHDR != null then cfg.defaultHDR else HDR;
+  finalHDR =
+    if cfg.defaultHDR != null
+    then cfg.defaultHDR
+    else HDR;
   finalWSI = cfg.defaultWSI;
 
   # Select gamescope packages based on useGit option
   gamescopePackages =
-    if cfg.useGit then
-      {
-        gamescope = inputs.mix-nix.packages.${pkgs.system}.gamescope-git;
-        gamescope-wsi = inputs.mix-nix.packages.${pkgs.system}.gamescope-git.wsi;
-      }
-    else
-      {
-        gamescope = pkgs.gamescope;
-        gamescope-wsi = pkgs.gamescope-wsi or null;
-      };
+    if cfg.useGit
+    then {
+      gamescope = inputs.mix-nix.packages.${system}.gamescope-git;
+      gamescope-wsi = inputs.mix-nix.packages.${system}.gamescope-git.wsi;
+    }
+    else {
+      gamescope = pkgs.gamescope;
+      gamescope-wsi = pkgs.gamescope-wsi or null;
+    };
 
   # Base gamescope options derived from monitor configuration
-  defaultBaseOptions = {
-    backend = "sdl";
-    fade-out-duration = 200;
-    fullscreen = true;
-    immediate-flips = true;
-    nested-refresh = REFRESH_RATE;
-    output-height = HEIGHT;
-    output-width = WIDTH;
-    rt = true;
-  }
-  // lib.optionalAttrs (VRR != false) {
-    adaptive-sync = true;
-  };
+  defaultBaseOptions =
+    {
+      backend = "sdl";
+      fade-out-duration = 200;
+      fullscreen = true;
+      immediate-flips = true;
+      nested-refresh = REFRESH_RATE;
+      output-height = HEIGHT;
+      output-width = WIDTH;
+      rt = true;
+    }
+    // lib.optionalAttrs (VRR != false) {
+      adaptive-sync = true;
+    };
 
   # Merge user options with defaults - user options override defaults
   finalBaseOptions = defaultBaseOptions // cfg.baseOptions;
 
   # Base environment variables
-  defaultEnvironment = {
-    AMD_VULKAN_ICD = "RADV";
-    DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1 = 1;
-    DISABLE_LAYER_NV_OPTIMUS_1 = 1;
-    GAMESCOPE_WAYLAND_DISPLAY = "gamescope-0";
-    PROTON_ADD_CONFIG = "sdlinput,wayland";
-    PROTON_ENABLE_WAYLAND = 1;
-    RADV_PERFTEST = "aco";
-    SDL_VIDEODRIVER = "wayland";
-  }
-  // lib.optionalAttrs finalWSI {
-    ENABLE_GAMESCOPE_WSI = 1;
-  }
-  // lib.optionalAttrs finalHDR {
-    DXVK_HDR = 1;
-    ENABLE_HDR_WSI = 1;
-    PROTON_ENABLE_HDR = 1;
-  };
+  defaultEnvironment =
+    {
+      AMD_VULKAN_ICD = "RADV";
+      DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1 = 1;
+      DISABLE_LAYER_NV_OPTIMUS_1 = 1;
+      GAMESCOPE_WAYLAND_DISPLAY = "gamescope-0";
+      PROTON_ADD_CONFIG = "sdlinput,wayland";
+      PROTON_ENABLE_WAYLAND = 1;
+      RADV_PERFTEST = "aco";
+      SDL_VIDEODRIVER = "wayland";
+    }
+    // lib.optionalAttrs finalWSI {
+      ENABLE_GAMESCOPE_WSI = 1;
+    }
+    // lib.optionalAttrs finalHDR {
+      DXVK_HDR = 1;
+      ENABLE_HDR_WSI = 1;
+      PROTON_ENABLE_HDR = 1;
+    };
 
   # Merge user environment with defaults
   finalEnvironment = defaultEnvironment // cfg.environment;
@@ -105,7 +111,7 @@ let
     # Smart environment display function - dynamically discovers all relevant variables
     function show_environment
         echo -e "\033[1;36m[gamescoperun]\033[0m Environment:"
-        
+
         # Dynamically check all configured environment variables
         for var in ${lib.concatStringsSep " " allEnvVars}
             if set -q $var
@@ -117,7 +123,7 @@ let
                 end
             end
         end
-        
+
         # Show any additional environment variables that might be set by wrappers
         # but not in our known list (discovery mode)
         for var in (env | grep -E '^(GAMESCOPE_|ENABLE_|DXVK_|PROTON_|RADV_|AMD_|SDL_)' | cut -d= -f1 | sort -u)
@@ -128,7 +134,7 @@ let
                     break
                 end
             end
-            
+
             if not $already_shown
                 if set -q $var
                     set -l value (eval echo \$$var)
@@ -166,7 +172,8 @@ let
     ${lib.concatStringsSep "\n" (
       lib.mapAttrsToList (
         name: value: "set -gx ${name} ${lib.escapeShellArg (toString value)}"
-      ) finalEnvironment
+      )
+      finalEnvironment
     )}
 
     # Process wrapper-specific environment overrides
@@ -185,7 +192,7 @@ let
         set -l var_name $argv[1]
         set -l true_action $argv[2]
         set -l false_action $argv[3]
-        
+
         if set -q $var_name
             set -l value (eval echo \$$var_name)
             switch "$value"
@@ -217,7 +224,11 @@ let
             set add_hdr_flags true
         end
         # If GAMESCOPE_USE_HDR is "false", add_hdr_flags stays false
-    else if test "${if finalHDR then "true" else "false"}" = "true"
+    else if test "${
+      if finalHDR
+      then "true"
+      else "false"
+    }" = "true"
         set add_hdr_flags true
     end
 
@@ -231,7 +242,11 @@ let
         if test "$GAMESCOPE_USE_WSI" = "true" -o "$GAMESCOPE_USE_WSI" = "1"
             set wsi_enabled true
         end
-    else if test "${if finalWSI then "true" else "false"}" = "true"
+    else if test "${
+      if finalWSI
+      then "true"
+      else "false"
+    }" = "true"
         set wsi_enabled true
     end
 
@@ -264,7 +279,11 @@ let
             case "0" "false"
                 set use_systemd false
         end
-    else if test "${if cfg.defaultSystemd then "true" else "false"}" = "true"
+    else if test "${
+      if cfg.defaultSystemd
+      then "true"
+      else "false"
+    }" = "true"
         set use_systemd true
     end
 
@@ -289,8 +308,7 @@ let
         exec $gamescope_cmd $final_args -- $child_cmd
     end
   '';
-in
-{
+in {
   options.play.gamescoperun = {
     enable = lib.mkEnableOption "gamescoperun, a wrapper for gamescope";
 
@@ -323,14 +341,13 @@ in
     };
 
     baseOptions = lib.mkOption {
-      type =
-        with lib.types;
+      type = with lib.types;
         attrsOf (oneOf [
           str
           int
           bool
         ]);
-      default = { };
+      default = {};
       example = {
         "fsr-upscaling" = true;
         "output-width" = 2560;
@@ -344,13 +361,12 @@ in
     };
 
     environment = lib.mkOption {
-      type =
-        with lib.types;
+      type = with lib.types;
         attrsOf (oneOf [
           str
           int
         ]);
-      default = { };
+      default = {};
       description = ''
         Environment variables to set within the gamescoperun script.
         HDR-related variables are set automatically based on monitor configuration
@@ -367,11 +383,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [
-      cfg.package
-    ]
-    ++ [ gamescopePackages.gamescope ]
-    ++ lib.optionals (gamescopePackages.gamescope-wsi != null) [ gamescopePackages.gamescope-wsi ];
+    home.packages =
+      [
+        cfg.package
+      ]
+      ++ [gamescopePackages.gamescope]
+      ++ lib.optionals (gamescopePackages.gamescope-wsi != null) [gamescopePackages.gamescope-wsi];
 
     # Assertion to ensure monitors are configured if gamescoperun is enabled
     assertions = [
