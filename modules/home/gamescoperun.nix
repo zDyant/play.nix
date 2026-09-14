@@ -2,7 +2,7 @@
   lib,
   config,
   pkgs,
-  inputs,
+  playInputs,
   playLib,
   ...
 }:
@@ -38,8 +38,8 @@ let
   gamescopePackages =
     if cfg.useGit
     then {
-      gamescope = inputs.mix-nix.packages.${system}.gamescope-git;
-      gamescope-wsi = inputs.mix-nix.packages.${system}.gamescope-git.wsi;
+      gamescope = playInputs.mix-nix.packages.${system}.gamescope-git;
+      gamescope-wsi = playInputs.mix-nix.packages.${system}.gamescope-git.wsi;
     }
     else {
       gamescope = pkgs.gamescope;

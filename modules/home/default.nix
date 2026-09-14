@@ -10,7 +10,7 @@
   config = {
     # Pass play.nix's inputs to all modules via _module.args
     _module.args = {
-      inputs = flake.inputs;
+      playInputs = flake.inputs;
       playLib = flake.lib;
     };
   };
