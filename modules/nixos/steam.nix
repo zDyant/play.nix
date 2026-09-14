@@ -17,6 +17,7 @@
   defaultCompatPackages = [
     proton-cachyos
     proton-cachyos-v3
+    pkgs.proton-ge-bin
   ];
 
   finalCompatPackages = defaultCompatPackages ++ cfg.extraCompatPackages;
@@ -31,7 +32,6 @@ in {
     extraCompatPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [];
-      example = with pkgs; [proton-ge-bin];
       description = "Additional Proton compatibility packages to add to the defaults";
     };
 
