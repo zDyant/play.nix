@@ -1,23 +1,22 @@
 # Steam module with gaming optimizations
-# Automatically includes proton-cachyos and proton-cachyos-v4 packages (from mix.nix)
+# Automatically includes proton-cachyos and proton-cachyos-v3 packages (from mix.nix)
 {
   pkgs,
   lib,
   config,
   inputs,
   ...
-}:
-
-let
+}: let
   cfg = config.play.steam;
+  system = pkgs.stdenv.hostPlatform.system;
 
   # Packages come directly from mix.nix (no overlay needed for users)
-  proton-cachyos = inputs.mix-nix.packages.${pkgs.system}.proton-cachyos;
-  proton-cachyos-v4 = inputs.mix-nix.packages.${pkgs.system}.proton-cachyos.v4;
+  proton-cachyos = inputs.mix-nix.packages.${system}.proton-cachyos;
+  proton-cachyos-v3 = inputs.mix-nix.packages.${system}.proton-cachyos.v3;
 
   defaultCompatPackages = [
     proton-cachyos
-    proton-cachyos-v4
+    proton-cachyos-v3
   ];
 
   finalCompatPackages = defaultCompatPackages ++ cfg.extraCompatPackages;
@@ -25,27 +24,26 @@ let
   configuredSteam = pkgs.steam.override {
     extraPkgs = cfg.extraPkgs;
   };
-in
-{
+in {
   options.play.steam = {
     enable = lib.mkEnableOption "Steam with gaming optimizations";
 
     extraCompatPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
-      default = [ ];
-      example = with pkgs; [ proton-ge-bin ];
+      default = [];
+      example = with pkgs; [proton-ge-bin];
       description = "Additional Proton compatibility packages to add to the defaults";
     };
 
     extraPkgs = lib.mkOption {
       type = lib.types.functionTo (lib.types.listOf lib.types.package);
-      default =
-        pkgs: with pkgs; [
+      default = pkgs:
+        with pkgs; [
           # X11 libraries
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXinerama
-          xorg.libXScrnSaver
+          libxcursor
+          libxi
+          libxinerama
+          libxscrnsaver
 
           # System libraries
           stdenv.cc.cc.lib
